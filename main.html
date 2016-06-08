@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>Shooter</title>
+        <style>
+            canvas {
+                border: 1px solid black;
+            }
+            body{
+                width: 700px;
+                margin: auto;
+            }
+        </style>
+        <script src="Player.js"></script>
+        <script src="Inimigo.js"></script>
+        <script src="Tiro.js"></script>
+        <script src="Item.js"></script>
+    </head>
+    <body>
+        <h1>Shooter</h1>
+        <canvas width="600" height="450">
+            Seu navegador não tem suporte ao canvas!
+            Atualize seu navegador.
+        </canvas>
+        <script>
+            var tela = document.getElementsByTagName("canvas")[0];
+            var ctx = tela.getContext("2d");
+            var fps = 60;
+            var dt = 1 / fps;
+            var enemycd = 2;
+            var bgcd = 5;
+            var posbg = bgcd;
+            
+            var pc = new Player();
+            var item = new Item(-100, -100, 10);
+            var bg = new Image();
+    		bg.src = "img/bg.jpg";
+
+            var tiros = [];
+            var inimigos = [];
+
+            function passo() {
+            	
+           		enemycd -= dt;
+                if (enemycd <= 0){
+                    inimigos.push(new Inimigo(pc.x+100-Math.random()*200, 0, 0, 0, 0, (Math.random()*200)+50, 12));
+                    enemycd = 1/(Math.log((2000+pc.score)/1000));
+                }
+
+                posbg -= dt;
+                if (posbg<=0){
+                    posbg = bgcd;
+                }
+
+                item.cd -= dt;
+                item.tempo -= dt;
+
+                if (item.cd <=0) {
+                    item.cd = 30;
+                    item.tempo = 5;
+                    item.x = Math.random()*tela.width;
+                    item.y = Math.random()*tela.height;
+                }
+
+                if (item.tempo <= 0){
+                    item.x = -100;
+                    item.y = -100;
+                }
+
+                
+                for (var i = inimigos.length - 1; i >= 0; --i) {
+                	if (inimigos[i].excluir==1){
+                		inimigos.splice(i, 1);
+                	} else{
+                    inimigos[i].mover();
+                	}
+                }
+                for (var i = tiros.length - 1; i >= 0; --i) {
+                    if (tiros[i].excluir==1){
+                		tiros.splice(i, 1);
+                	} else{
+                    tiros[i].mover();
+                	}
+                }
+
+                pc.restricoes();
+                for (var i in inimigos) {
+                    inimigos[i].restricoes();
+                }
+                for (var i in tiros) {
+                    tiros[i].restricoes();
+                }
+                
+                //Limpar a tela
+                ctx.clearRect(0, 0, tela.width, tela.height);
+
+
+				//ctx.drawImage(bg, (pc.x/tela.width)*120, (pc.y/tela.height)*90, tela.width, tela.height, 0, 0, tela.width, tela.height);
+
+                ctx.drawImage(bg, (((tela.width-pc.x)/tela.width)-1)*100, (1-posbg/bgcd)*tela.height, tela.width+100, tela.height+10);
+                ctx.drawImage(bg, (((tela.width-pc.x)/tela.width)-1)*100, ((1-posbg/bgcd)*tela.height)-tela.height, tela.width+100, tela.height+1);
+
+
+                for (var i in inimigos) {
+                    inimigos[i].desenhar();
+                }
+                for (var i in tiros) {
+                    tiros[i].desenhar();
+                }
+                item.desenhar();
+                pc.desenhar();
+                 
+                pc.mover();
+                for (var i = inimigos.length - 1; i >= 0; --i) {
+                    if (pc.danificado <= 0 && inimigos[i].colidiuComCircular(pc)) {
+                        pc.danificado = 2;
+                        pc.energy--;
+                    }
+                    for (var j = tiros.length - 1; j >= 0; --j) {
+                        if (inimigos[i].colidiuComCircular(tiros[j])) {
+                            //inimigos[i].y = 1200;
+                            inimigos[i].excluir = 1;
+                            tiros[j].excluir = 1;
+                            pc.score+=100;
+                            break;
+                        }
+                    }
+                }
+                if (item.colidiuComCircular(pc)){
+                    item.x = -100;
+                    item.y = -100;
+                    pc.energy++;
+                }
+                if (pc.energy<=0){
+                    go = new Image();
+                    go.src = "img/gameover.png";
+                    ctx.drawImage(go, 10, tela.height/3,tela.width-20,tela.height/3);
+            		setTimeout(function(){clearInterval(game);}, 50);
+            	}   
+            }
+
+            function teclaPressionada(e) {
+                //console.log("Tecla Pressionada: " + e.keyCode);
+                switch (e.keyCode) {
+                    case 32:
+                    	if (pc.tirocd<=0) {
+                        	tiros.push(new Tiro(pc.x, pc.y, 6, -200));
+                        	pc.tirocd = 1/2;
+                        }
+                        break;
+                    case 37:
+                        pc.ax = -400;
+                        break;
+                    case 39:
+                        pc.ax = 400;
+                        break;
+                    case 38:
+                        pc.ay = -400;
+                        break;
+                    case 40:
+                        pc.ay = 400;
+                        break;
+                }
+
+            }
+
+            function teclaSolta(e) {
+                //console.log("Tecla Solta: " + e.keyCode);
+                switch (e.keyCode) {
+                    case 37:
+                    case 39:
+                        pc.ax = 0;
+                        break;
+                    case 38:
+                    case 40:
+                        pc.ay = 0;
+                        break;
+                }
+            }
+            
+            var game = setInterval(passo, 1000 / fps);
+
+            addEventListener("keydown", teclaPressionada);
+            addEventListener("keyup", teclaSolta);
+            
+        </script>
+    </body>
+</html>
